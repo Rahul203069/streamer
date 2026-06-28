@@ -1,9 +1,15 @@
 import { CreateLiveForm } from "@/components/create-live-form";
 import { PageShell } from "@/components/page-shell";
+import { isAdminSession } from "@/lib/admin";
 import { requireAuth } from "@/lib/require-auth";
+import { redirect } from "next/navigation";
 
 export default async function CreateLivePage() {
-  await requireAuth();
+  const session = await requireAuth();
+
+  if (!isAdminSession(session)) {
+    redirect("/");
+  }
 
   return (
     <PageShell className="space-y-6">

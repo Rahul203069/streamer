@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { isAdminSession } from "@/lib/admin";
 import { auth } from "@/lib/auth";
 import { formatDate } from "@/lib/format";
 import { getLiveStreamFeed } from "@/lib/live-streams";
@@ -25,6 +26,8 @@ export default async function Home() {
   if (!session?.user) {
     redirect("/login");
   }
+
+  const isAdmin = isAdminSession(session);
 
   const [videos, liveStreams] = await Promise.all([
     prisma.video.findMany({
@@ -56,14 +59,16 @@ export default async function Home() {
             <Upload className="size-4" />
             Upload
           </Link>
-          <Link href="/live/create" className={cn(buttonVariants({ variant: "outline" }))}>
-            <Radio className="size-4" />
-            Go Live
-          </Link>
+          {isAdmin ? (
+            <Link href="/live/create" className={cn(buttonVariants({ variant: "outline" }))}>
+              <Radio className="size-4" />
+              Go Live
+            </Link>
+          ) : null}
         </div>
       </section>
 
-      <LiveVideosSection initialLiveStreams={liveStreams} />
+      <LiveVideosSection initialLiveStreams={liveStreams} canCreateLive={isAdmin} />
 
       <section className="space-y-4">
         <div className="flex items-center justify-between gap-3">
@@ -95,10 +100,12 @@ export default async function Home() {
               <Upload className="size-4" />
               Upload first video
             </Link>
-            <Link href="/live/create" className={cn(buttonVariants({ variant: "outline" }))}>
-              <Radio className="size-4" />
-              Go live instead
-            </Link>
+            {isAdmin ? (
+              <Link href="/live/create" className={cn(buttonVariants({ variant: "outline" }))}>
+                <Radio className="size-4" />
+                Go live instead
+              </Link>
+            ) : null}
           </CardContent>
         </Card>
       ) : (

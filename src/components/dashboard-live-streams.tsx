@@ -23,8 +23,10 @@ type DashboardLiveStream = {
 
 export function DashboardLiveStreams({
   liveStreams,
+  canCreateLive,
 }: {
   liveStreams: DashboardLiveStream[];
+  canCreateLive: boolean;
 }) {
   return (
     <Card>
@@ -34,7 +36,7 @@ export function DashboardLiveStreams({
       </CardHeader>
       <CardContent>
         {liveStreams.length === 0 ? (
-          <EmptyState />
+          <EmptyState canCreateLive={canCreateLive} />
         ) : (
           <div className="divide-y">
             {liveStreams.map((stream) => (
@@ -76,13 +78,15 @@ export function DashboardLiveStreams({
   );
 }
 
-function EmptyState() {
+function EmptyState({ canCreateLive }: { canCreateLive: boolean }) {
   return (
     <div className="rounded-lg border border-dashed p-6 text-center">
       <p className="text-sm text-muted-foreground">No live streams yet.</p>
-      <Link href="/live/create" className={cn(buttonVariants({ variant: "outline" }), "mt-4")}>
-        Create live stream
-      </Link>
+      {canCreateLive ? (
+        <Link href="/live/create" className={cn(buttonVariants({ variant: "outline" }), "mt-4")}>
+          Create live stream
+        </Link>
+      ) : null}
     </div>
   );
 }

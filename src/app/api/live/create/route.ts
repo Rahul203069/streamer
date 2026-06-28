@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { isAdminSession } from "@/lib/admin";
 import { auth } from "@/lib/auth";
 import { createLiveInput } from "@/lib/cloudflare";
 import { prisma } from "@/lib/prisma";
@@ -15,6 +16,10 @@ export async function POST(request: Request) {
 
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
+    if (!isAdminSession(session)) {
+      return NextResponse.json({ error: "Only admins can create live streams." }, { status: 403 });
     }
 
     const body = schema.parse(await request.json());

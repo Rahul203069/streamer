@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { DashboardLiveStreams } from "@/components/dashboard-live-streams";
 import { DashboardVideos } from "@/components/dashboard-videos";
+import { DisableAllLiveStreamsCard } from "@/components/disable-all-live-streams-card";
 import { PageShell } from "@/components/page-shell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
@@ -14,12 +15,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { isAdminSession } from "@/lib/admin";
 import { prisma } from "@/lib/prisma";
 import { requireAuth } from "@/lib/require-auth";
 import { cn } from "@/lib/utils";
 
 export default async function DashboardPage() {
   const session = await requireAuth();
+  const isAdmin = isAdminSession(session);
   const [videos, liveStreams] = await Promise.all([
     prisma.video.findMany({
       where: { userId: session.user.id },
@@ -50,10 +53,12 @@ export default async function DashboardPage() {
             <Upload className="size-4" />
             Upload Video
           </Link>
-          <Link href="/live/create" className={cn(buttonVariants({ variant: "outline" }))}>
-            <Radio className="size-4" />
-            Create Live
-          </Link>
+          {isAdmin ? (
+            <Link href="/live/create" className={cn(buttonVariants({ variant: "outline" }))}>
+              <Radio className="size-4" />
+              Create Live
+            </Link>
+          ) : null}
         </div>
       </div>
 
@@ -74,10 +79,12 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
+      {isAdmin ? <DisableAllLiveStreamsCard /> : null}
+
       <Separator />
       <div className="grid gap-6 lg:grid-cols-2">
         <DashboardVideos videos={videos} />
-        <DashboardLiveStreams liveStreams={liveStreams} />
+        <DashboardLiveStreams liveStreams={liveStreams} canCreateLive={isAdmin} />
       </div>
     </PageShell>
   );

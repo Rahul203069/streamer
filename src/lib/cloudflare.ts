@@ -30,7 +30,7 @@ function requireCloudflareEnv() {
 
 async function cloudflareRequest<T>(
   path: string,
-  options: { method?: "POST" | "DELETE"; body?: unknown } = {},
+  options: { method?: "POST" | "PATCH" | "DELETE"; body?: unknown } = {},
 ) {
   const { accountId, token } = requireCloudflareEnv();
   const method = options.method ?? "POST";
@@ -85,6 +85,15 @@ export async function createLiveInput(title: string) {
 export async function deleteLiveInput(liveInputId: string) {
   return cloudflareRequest<Record<string, never>>(`live_inputs/${liveInputId}`, {
     method: "DELETE",
+  });
+}
+
+export async function disableLiveInput(liveInputId: string) {
+  return cloudflareRequest<Record<string, never>>(`live_inputs/${liveInputId}`, {
+    method: "PATCH",
+    body: {
+      enabled: false,
+    },
   });
 }
 

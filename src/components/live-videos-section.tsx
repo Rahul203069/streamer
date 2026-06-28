@@ -18,8 +18,10 @@ import { cn } from "@/lib/utils";
 
 export function LiveVideosSection({
   initialLiveStreams,
+  canCreateLive,
 }: {
   initialLiveStreams: LiveStreamFeedItem[];
+  canCreateLive: boolean;
 }) {
   const [liveStreams, setLiveStreams] = useState(initialLiveStreams);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -66,13 +68,15 @@ export function LiveVideosSection({
             {lastUpdated ? ` Last checked ${lastUpdated.toLocaleTimeString()}.` : ""}
           </p>
         </div>
-        <Link
-          href="/live/create"
-          className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
-        >
-          <Radio className="size-4" />
-          Go Live
-        </Link>
+        {canCreateLive ? (
+          <Link
+            href="/live/create"
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+          >
+            <Radio className="size-4" />
+            Go Live
+          </Link>
+        ) : null}
       </div>
 
       {liveStreams.length === 0 ? (

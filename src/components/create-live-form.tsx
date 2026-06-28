@@ -65,67 +65,45 @@ export function CreateLiveForm() {
   }
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]">
-      <Card>
-        <CardHeader>
-          <CardTitle>Create Live Stream</CardTitle>
-          <CardDescription>
-            Create a Cloudflare Live Input, then paste the RTMPS URL and stream key into OBS.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-5" onSubmit={onSubmit}>
-            <div className="space-y-2">
-              <Label htmlFor="live-title">Live stream title</Label>
-              <Input
-                id="live-title"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                placeholder="My first live stream"
-                required
-              />
-            </div>
-            <Button type="submit" disabled={loading} className="w-full sm:w-auto">
-              {loading ? <Loader2 className="size-4 animate-spin" /> : <Radio className="size-4" />}
-              {loading ? "Creating" : "Create live stream"}
-            </Button>
-          </form>
+    <Card className="max-w-3xl">
+      <CardHeader>
+        <CardTitle>Create Live Stream</CardTitle>
+        <CardDescription>
+          Create a Cloudflare Live Input and copy the RTMPS credentials.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form className="space-y-5" onSubmit={onSubmit}>
+          <div className="space-y-2">
+            <Label htmlFor="live-title">Live stream title</Label>
+            <Input
+              id="live-title"
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              placeholder="My first live stream"
+              required
+            />
+          </div>
+          <Button type="submit" disabled={loading} className="w-full sm:w-auto">
+            {loading ? <Loader2 className="size-4 animate-spin" /> : <Radio className="size-4" />}
+            {loading ? "Creating" : "Create live stream"}
+          </Button>
+        </form>
 
-          {result ? (
-            <div className="mt-6 space-y-4 rounded-lg border bg-muted/50 p-4 text-sm">
-              <CredentialRow label="RTMPS URL" value={result.rtmpsUrl} />
-              <CredentialRow label="Stream key" value={result.streamKey} secret />
-              <Link
-                href={result.watchUrl}
-                className={cn(buttonVariants({ variant: "outline" }), "mt-2")}
-              >
-                Open live watch page
-              </Link>
-            </div>
-          ) : null}
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>OBS Setup</CardTitle>
-          <CardDescription>Use these steps after the live input is created.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <ol className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-            <li>Open OBS.</li>
-            <li>Go to Settings.</li>
-            <li>Go to Stream.</li>
-            <li>Select Service: Custom.</li>
-            <li>Paste RTMPS URL as Server.</li>
-            <li>Paste Stream Key.</li>
-            <li>Click Start Streaming.</li>
-          </ol>
-          <p className="mt-4 text-sm text-muted-foreground">
-            Stream keys are private. Only the creator sees the key in this app.
-          </p>
-        </CardContent>
-      </Card>
-    </div>
+        {result ? (
+          <div className="mt-6 space-y-4 rounded-lg border bg-muted/50 p-4 text-sm">
+            <CredentialRow label="RTMPS URL" value={result.rtmpsUrl} />
+            <CredentialRow label="Stream key" value={result.streamKey} secret />
+            <Link
+              href={result.watchUrl}
+              className={cn(buttonVariants({ variant: "outline" }), "mt-2")}
+            >
+              Open live watch page
+            </Link>
+          </div>
+        ) : null}
+      </CardContent>
+    </Card>
   );
 }
 

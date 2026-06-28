@@ -15,6 +15,11 @@ export type LiveStreamFeedItem = {
 
 export async function getLiveStreamFeed(): Promise<LiveStreamFeedItem[]> {
   const liveStreams = await prisma.liveStream.findMany({
+    where: {
+      status: {
+        notIn: ["disabled", "ended"],
+      },
+    },
     include: {
       user: {
         select: {
