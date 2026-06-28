@@ -30,6 +30,10 @@ type SavedTusUpload = {
   videoUid: string;
 };
 
+type TusUploadData = SavedTusUpload & {
+  isResume: boolean;
+};
+
 export function UploadVideoForm() {
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -53,14 +57,31 @@ export function UploadVideoForm() {
 
     try {
       const storageKey = getTusStorageKey(file);
-      const uploadData = await getOrCreateTusUpload({
+      let uploadData = await getOrCreateTusUpload({
         title: title.trim(),
         file,
         storageKey,
       });
 
       setUploadStep("uploading");
-      await uploadFileToCloudflare(uploadData.uploadURL, file, setUploadProgress);
+      try {
+        await uploadFileToCloudflare(uploadData.uploadURL, file, setUploadProgress);
+      } catch (error) {
+        if (!uploadData.isResume || !isTusResumeError(error)) {
+          throw error;
+        }
+
+        window.localStorage.removeItem(storageKey);
+        setUploadStep("creating");
+        setUploadProgress(0);
+        uploadData = await createTusUpload({
+          title: title.trim(),
+          file,
+          storageKey,
+        });
+        setUploadStep("uploading");
+        await uploadFileToCloudflare(uploadData.uploadURL, file, setUploadProgress);
+      }
 
       setUploadStep("saving");
       const completeResponse = await fetch("/api/videos/complete", {
@@ -188,13 +209,28 @@ async function getOrCreateTusUpload({
   title: string;
   file: File;
   storageKey: string;
-}) {
+}): Promise<TusUploadData> {
   const savedUpload = readSavedTusUpload(storageKey);
 
   if (savedUpload) {
-    return savedUpload;
+    return {
+      ...savedUpload,
+      isResume: true,
+    };
   }
 
+  return createTusUpload({ title, file, storageKey });
+}
+
+async function createTusUpload({
+  title,
+  file,
+  storageKey,
+}: {
+  title: string;
+  file: File;
+  storageKey: string;
+}): Promise<TusUploadData> {
   const uploadResponse = await fetch("/api/videos/create-tus-upload", {
     method: "POST",
     headers: {
@@ -216,6 +252,7 @@ async function getOrCreateTusUpload({
   const newUpload = {
     uploadURL: uploadData.uploadURL,
     videoUid: uploadData.videoUid,
+    isResume: false,
   };
   window.localStorage.setItem(storageKey, JSON.stringify(newUpload));
 
@@ -243,6 +280,14 @@ function readSavedTusUpload(storageKey: string): SavedTusUpload | null {
   }
 
   return null;
+}
+
+function isTusResumeError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return error.message.toLowerCase().includes("failed to resume upload");
 }
 
 function uploadFileToCloudflare(
