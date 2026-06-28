@@ -1,65 +1,143 @@
-import Image from "next/image";
+import { Play, Radio, Upload, Video } from "lucide-react";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
-export default function Home() {
+import { LiveVideosSection } from "@/components/live-videos-section";
+import { PageShell } from "@/components/page-shell";
+import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { auth } from "@/lib/auth";
+import { formatDate } from "@/lib/format";
+import { getLiveStreamFeed } from "@/lib/live-streams";
+import { prisma } from "@/lib/prisma";
+import { cn } from "@/lib/utils";
+
+export default async function Home() {
+  const session = await auth();
+
+  if (!session?.user) {
+    redirect("/login");
+  }
+
+  const [videos, liveStreams] = await Promise.all([
+    prisma.video.findMany({
+      include: {
+        user: {
+          select: {
+            name: true,
+            email: true,
+            image: true,
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    }),
+    getLiveStreamFeed(),
+  ]);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <PageShell className="space-y-6">
+      <section className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-semibold tracking-tight">Home</h1>
+          <p className="mt-2 text-muted-foreground">Watch uploads and live streams from creators.</p>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Link href="/upload" className={cn(buttonVariants())}>
+            <Upload className="size-4" />
+            Upload
+          </Link>
+          <Link href="/live/create" className={cn(buttonVariants({ variant: "outline" }))}>
+            <Radio className="size-4" />
+            Go Live
+          </Link>
         </div>
-      </main>
-    </div>
+      </section>
+
+      <LiveVideosSection initialLiveStreams={liveStreams} />
+
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-semibold tracking-tight">Watch Videos</h2>
+            <p className="text-sm text-muted-foreground">
+              Uploaded videos from all users appear here.
+            </p>
+          </div>
+          <Link href="/upload" className={cn(buttonVariants({ size: "sm" }))}>
+            <Upload className="size-4" />
+            Upload
+          </Link>
+        </div>
+
+        {videos.length === 0 ? (
+        <Card className="border-dashed">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-2 flex size-12 items-center justify-center rounded-lg border bg-muted">
+              <Video className="size-5 text-muted-foreground" />
+            </div>
+            <CardTitle>No videos yet</CardTitle>
+            <CardDescription>
+              Once users upload videos, they will appear here for everyone who signs in.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col justify-center gap-2 sm:flex-row">
+            <Link href="/upload" className={cn(buttonVariants())}>
+              <Upload className="size-4" />
+              Upload first video
+            </Link>
+            <Link href="/live/create" className={cn(buttonVariants({ variant: "outline" }))}>
+              <Radio className="size-4" />
+              Go live instead
+            </Link>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {videos.map((video) => (
+            <Link
+              key={video.cloudflareUid}
+              href={`/watch/${video.cloudflareUid}`}
+              className="group block focus-visible:outline-none"
+            >
+              <div className="aspect-video overflow-hidden rounded-lg border bg-black transition-colors group-hover:border-foreground/40">
+                <div className="flex h-full items-center justify-center">
+                  <Play className="size-10 fill-white text-white opacity-90 transition-transform group-hover:scale-105" />
+                </div>
+              </div>
+              <div className="mt-3 flex gap-3">
+                <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-sm font-medium">
+                  {(video.user.name ?? video.user.email ?? "U").slice(0, 1).toUpperCase()}
+                </div>
+                <div className="min-w-0 space-y-1">
+                  <h2 className="line-clamp-2 text-sm font-medium leading-5 group-hover:underline">
+                    {video.title}
+                  </h2>
+                  <p className="truncate text-sm text-muted-foreground">
+                    {video.user.name ?? video.user.email ?? "Unknown creator"}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                    <Badge variant="secondary" className="h-5 rounded-md px-1.5 text-[11px]">
+                      {video.status}
+                    </Badge>
+                    <span>{formatDate(video.createdAt)}</span>
+                  </div>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+      </section>
+    </PageShell>
   );
 }
