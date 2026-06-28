@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { DashboardLiveStreams } from "@/components/dashboard-live-streams";
 import { DashboardVideos } from "@/components/dashboard-videos";
+import { DeleteAllVideosCard } from "@/components/delete-all-videos-card";
 import { DisableAllLiveStreamsCard } from "@/components/disable-all-live-streams-card";
 import { PageShell } from "@/components/page-shell";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -77,7 +78,12 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      {isAdmin ? <DisableAllLiveStreamsCard /> : null}
+      {isAdmin ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <DisableAllLiveStreamsCard />
+          <DeleteAllVideosCard />
+        </div>
+      ) : null}
 
       <Separator />
       <div className="grid gap-6 lg:grid-cols-2">

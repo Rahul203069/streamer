@@ -92,6 +92,12 @@ export async function deleteLiveInput(liveInputId: string) {
   });
 }
 
+export async function deleteStreamVideo(videoUid: string) {
+  return cloudflareRequest<Record<string, never>>(videoUid, {
+    method: "DELETE",
+  });
+}
+
 export async function disableLiveInput(liveInputId: string) {
   return cloudflareRequest<Record<string, never>>(`live_inputs/${liveInputId}`, {
     method: "PATCH",
