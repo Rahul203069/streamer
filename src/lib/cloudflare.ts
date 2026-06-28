@@ -28,6 +28,10 @@ function requireCloudflareEnv() {
   return { accountId, token };
 }
 
+export function getCloudflareCredentials() {
+  return requireCloudflareEnv();
+}
+
 async function cloudflareRequest<T>(
   path: string,
   options: { method?: "POST" | "PATCH" | "DELETE"; body?: unknown } = {},
