@@ -53,12 +53,10 @@ export default async function DashboardPage() {
             <Upload className="size-4" />
             Upload Video
           </Link>
-          {isAdmin ? (
-            <Link href="/live/create" className={cn(buttonVariants({ variant: "outline" }))}>
-              <Radio className="size-4" />
-              Create Live
-            </Link>
-          ) : null}
+          <Link href="/live/create" className={cn(buttonVariants({ variant: "outline" }))}>
+            <Radio className="size-4" />
+            Create Live
+          </Link>
         </div>
       </div>
 
@@ -84,7 +82,7 @@ export default async function DashboardPage() {
       <Separator />
       <div className="grid gap-6 lg:grid-cols-2">
         <DashboardVideos videos={videos} />
-        <DashboardLiveStreams liveStreams={liveStreams} canCreateLive={isAdmin} />
+        <DashboardLiveStreams liveStreams={liveStreams} />
       </div>
     </PageShell>
   );

@@ -4,13 +4,11 @@ import Link from "next/link";
 import { AuthButton } from "@/components/auth-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { buttonVariants } from "@/components/ui/button";
-import { isAdminSession } from "@/lib/admin";
 import { auth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
 
 export async function Navbar() {
   const session = await auth();
-  const isAdmin = isAdminSession(session);
 
   return (
     <header className="sticky top-0 z-40 border-b bg-background/95 backdrop-blur">
@@ -39,15 +37,13 @@ export async function Navbar() {
             <Upload className="size-4" />
             Upload
           </Link>
-          {isAdmin ? (
-            <Link
-              href="/live/create"
-              className={cn(buttonVariants({ variant: "ghost" }))}
-            >
-              <Radio className="size-4" />
-              Live
-            </Link>
-          ) : null}
+          <Link
+            href="/live/create"
+            className={cn(buttonVariants({ variant: "ghost" }))}
+          >
+            <Radio className="size-4" />
+            Live
+          </Link>
         </div>
         <div className="flex items-center gap-2">
           {session?.user ? (
