@@ -5,15 +5,6 @@ import { auth } from "@/lib/auth";
 import { getCloudflareCredentials } from "@/lib/cloudflare";
 import { prisma } from "@/lib/prisma";
 
-const schema = z.object({
-  title: z.string().trim().min(1).max(160),
-  fileSize: z.number().int().positive(),
-});
-
-function encodeMetadataValue(value: string) {
-  return Buffer.from(value).toString("base64");
-}
-
 export async function POST(request: Request) {
   try {
     const session = await auth();
@@ -22,18 +13,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
 
-    const body = schema.parse(await request.json());
+    const uploadLength = request.headers.get("Upload-Length");
+    const uploadMetadata = request.headers.get("Upload-Metadata");
+
+    if (!uploadLength || !uploadMetadata) {
+      return NextResponse.json({ error: "Missing tus upload headers." }, { status: 400 });
+    }
+
+    const metadata = parseTusMetadata(uploadMetadata);
+    const body = z
+      .object({
+        title: z.string().trim().min(1).max(160),
+      })
+      .parse({
+        title: metadata.name ?? metadata.title,
+      });
     const { accountId, token } = getCloudflareCredentials();
-    const uploadMetadata = `name ${encodeMetadataValue(body.title)}`;
 
     const response = await fetch(
-      `https://api.cloudflare.com/client/v4/accounts/${accountId}/stream`,
+      `https://api.cloudflare.com/client/v4/accounts/${accountId}/stream?direct_user=true`,
       {
         method: "POST",
         headers: {
           Authorization: `Bearer ${token}`,
           "Tus-Resumable": "1.0.0",
-          "Upload-Length": String(body.fileSize),
+          "Upload-Length": uploadLength,
           "Upload-Metadata": uploadMetadata,
         },
       },
@@ -55,12 +59,31 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({
-      uploadURL,
-      videoUid: streamMediaId,
+    return new Response(null, {
+      status: 201,
+      headers: {
+        "Access-Control-Expose-Headers": "Location,stream-media-id",
+        Location: uploadURL,
+        "stream-media-id": streamMediaId,
+        "Tus-Resumable": "1.0.0",
+      },
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Could not create tus upload.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
+}
+
+function parseTusMetadata(uploadMetadata: string) {
+  return Object.fromEntries(
+    uploadMetadata
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((item) => {
+        const [key, value] = item.split(" ");
+
+        return [key, value ? Buffer.from(value, "base64").toString("utf8") : ""];
+      }),
+  );
 }

@@ -25,15 +25,6 @@ type UploadResult = {
 
 type UploadStep = "idle" | "creating" | "uploading" | "saving";
 
-type SavedTusUpload = {
-  uploadURL: string;
-  videoUid: string;
-};
-
-type TusUploadData = SavedTusUpload & {
-  isResume: boolean;
-};
-
 export function UploadVideoForm() {
   const [title, setTitle] = useState("");
   const [file, setFile] = useState<File | null>(null);
@@ -56,32 +47,8 @@ export function UploadVideoForm() {
     setResult(null);
 
     try {
-      const storageKey = getTusStorageKey(file);
-      let uploadData = await getOrCreateTusUpload({
-        title: title.trim(),
-        file,
-        storageKey,
-      });
-
       setUploadStep("uploading");
-      try {
-        await uploadFileToCloudflare(uploadData.uploadURL, file, setUploadProgress);
-      } catch (error) {
-        if (!uploadData.isResume || !isTusResumeError(error)) {
-          throw error;
-        }
-
-        window.localStorage.removeItem(storageKey);
-        setUploadStep("creating");
-        setUploadProgress(0);
-        uploadData = await createTusUpload({
-          title: title.trim(),
-          file,
-          storageKey,
-        });
-        setUploadStep("uploading");
-        await uploadFileToCloudflare(uploadData.uploadURL, file, setUploadProgress);
-      }
+      const uploadData = await uploadFileToCloudflare(file, title.trim(), setUploadProgress);
 
       setUploadStep("saving");
       const completeResponse = await fetch("/api/videos/complete", {
@@ -99,7 +66,6 @@ export function UploadVideoForm() {
 
       setResult({ videoUid: uploadData.videoUid });
       setUploadProgress(100);
-      window.localStorage.removeItem(storageKey);
       toast.success("Video uploaded to Cloudflare.");
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Upload failed.");
@@ -197,111 +163,20 @@ function uploadStepLabel(step: UploadStep) {
   return "Ready";
 }
 
-function getTusStorageKey(file: File) {
-  return `cloudflare-tus:${file.name}:${file.size}:${file.lastModified}`;
-}
-
-async function getOrCreateTusUpload({
-  title,
-  file,
-  storageKey,
-}: {
-  title: string;
-  file: File;
-  storageKey: string;
-}): Promise<TusUploadData> {
-  const savedUpload = readSavedTusUpload(storageKey);
-
-  if (savedUpload) {
-    return {
-      ...savedUpload,
-      isResume: true,
-    };
-  }
-
-  return createTusUpload({ title, file, storageKey });
-}
-
-async function createTusUpload({
-  title,
-  file,
-  storageKey,
-}: {
-  title: string;
-  file: File;
-  storageKey: string;
-}): Promise<TusUploadData> {
-  const uploadResponse = await fetch("/api/videos/create-tus-upload", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ title, fileSize: file.size }),
-  });
-
-  const uploadData = (await uploadResponse.json()) as {
-    uploadURL?: string;
-    videoUid?: string;
-    error?: string;
-  };
-
-  if (!uploadResponse.ok || !uploadData.uploadURL || !uploadData.videoUid) {
-    throw new Error(uploadData.error || "Could not create upload URL.");
-  }
-
-  const newUpload = {
-    uploadURL: uploadData.uploadURL,
-    videoUid: uploadData.videoUid,
-    isResume: false,
-  };
-  window.localStorage.setItem(storageKey, JSON.stringify(newUpload));
-
-  return newUpload;
-}
-
-function readSavedTusUpload(storageKey: string): SavedTusUpload | null {
-  const value = window.localStorage.getItem(storageKey);
-
-  if (!value) {
-    return null;
-  }
-
-  try {
-    const upload = JSON.parse(value) as Partial<SavedTusUpload>;
-
-    if (upload.uploadURL && upload.videoUid) {
-      return {
-        uploadURL: upload.uploadURL,
-        videoUid: upload.videoUid,
-      };
-    }
-  } catch {
-    window.localStorage.removeItem(storageKey);
-  }
-
-  return null;
-}
-
-function isTusResumeError(error: unknown) {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-
-  return error.message.toLowerCase().includes("failed to resume upload");
-}
-
 function uploadFileToCloudflare(
-  uploadURL: string,
   file: File,
+  title: string,
   onProgress: (progress: number) => void,
 ) {
-  return new Promise<void>((resolve, reject) => {
+  return new Promise<{ videoUid: string }>((resolve, reject) => {
     const upload = new tus.Upload(file, {
-      endpoint: uploadURL,
-      uploadUrl: uploadURL,
+      endpoint: "/api/videos/create-tus-upload",
       retryDelays: [0, 1000, 3000, 5000],
       chunkSize: 50 * 1024 * 1024,
+      storeFingerprintForResuming: true,
+      removeFingerprintOnSuccess: true,
       metadata: {
+        name: title,
         filename: file.name,
         filetype: file.type,
       },
@@ -318,10 +193,27 @@ function uploadFileToCloudflare(
       },
       onSuccess() {
         onProgress(100);
-        resolve();
+        const videoUid = getVideoUidFromTusUrl(upload.url);
+
+        if (!videoUid) {
+          reject(new Error("Upload finished, but Cloudflare video UID was not found."));
+          return;
+        }
+
+        resolve({ videoUid });
       },
     });
 
     upload.start();
   });
+}
+
+function getVideoUidFromTusUrl(uploadURL: string | null) {
+  if (!uploadURL) {
+    return null;
+  }
+
+  const match = uploadURL.match(/\/media\/([^/?]+)/);
+
+  return match?.[1] ?? null;
 }
